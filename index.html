@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Digital Filter Designer – Time & Frequency</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <h1>Digital Filter Designer</h1>
+        <p class="subtitle">
+          Explore how simple signals change under low-pass, high-pass, and band-pass filters.
+          See both the time-domain waveform and its frequency spectrum before and after filtering.
+        </p>
+      </div>
+      <div class="tag">
+        <span>Yousef Fayad · 2025</span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <!-- Controls -->
+      <aside class="controls-card">
+        <h2>Signal controls</h2>
+        <label class="field">
+          <span>Signal type</span>
+          <select id="signalType">
+            <option value="sine">Sine wave</option>
+            <option value="square">Square wave</option>
+            <option value="sawtooth">Sawtooth wave</option>
+            <option value="sinePlusNoise">Sine + noise</option>
+            <option value="twoTone">Two-tone (two sines)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Base frequency (Hz)</span>
+          <input type="range" id="baseFreq" min="1" max="40" value="5" />
+          <span class="value-label"><span id="baseFreqValue">5</span> Hz</span>
+        </label>
+
+        <label class="field">
+          <span>Second tone frequency (for two-tone)</span>
+          <input type="range" id="secondFreq" min="5" max="80" value="20" />
+          <span class="value-label"><span id="secondFreqValue">20</span> Hz</span>
+        </label>
+
+        <label class="field field-inline">
+          <input type="checkbox" id="addNoise" />
+          <span>Add small white noise</span>
+        </label>
+
+        <hr />
+
+        <h2>Filter controls</h2>
+        <label class="field">
+          <span>Filter type</span>
+          <select id="filterType">
+            <option value="lowpass">Low-pass</option>
+            <option value="highpass">High-pass</option>
+            <option value="bandpass">Band-pass</option>
+          </select>
+        </label>
+
+        <div id="lpHpControls">
+          <label class="field">
+            <span>Cutoff frequency (Hz)</span>
+            <input type="range" id="cutoff" min="1" max="100" value="20" />
+            <span class="value-label"><span id="cutoffValue">20</span> Hz</span>
+          </label>
+        </div>
+
+        <div id="bpControls" class="hidden">
+          <label class="field">
+            <span>Low cutoff (Hz)</span>
+            <input type="range" id="lowCutoff" min="1" max="80" value="10" />
+            <span class="value-label"><span id="lowCutoffValue">10</span> Hz</span>
+          </label>
+          <label class="field">
+            <span>High cutoff (Hz)</span>
+            <input type="range" id="highCutoff" min="5" max="120" value="40" />
+            <span class="value-label"><span id="highCutoffValue">40</span> Hz</span>
+          </label>
+        </div>
+
+        <hr />
+
+        <h2>Animation</h2>
+        <label class="field">
+          <span>Time scroll speed</span>
+          <input type="range" id="scrollSpeed" min="0" max="100" value="35" />
+          <span class="value-label"><span id="scrollSpeedValue">35</span></span>
+        </label>
+
+        <button id="resetBtn" class="button">Reset view</button>
+      </aside>
+
+      <!-- Visualizations -->
+      <section class="viz-column">
+        <div class="viz-card">
+          <h2>Time domain</h2>
+          <p class="hint">
+            Original signal (top) and filtered signal (bottom) over time.
+          </p>
+          <div class="canvas-grid">
+            <div class="canvas-block">
+              <h3>Original signal</h3>
+              <canvas id="timeOriginal" width="600" height="160"></canvas>
+            </div>
+            <div class="canvas-block">
+              <h3>Filtered signal</h3>
+              <canvas id="timeFiltered" width="600" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="viz-card">
+          <h2>Frequency domain</h2>
+          <p class="hint">
+            Magnitude spectrum before and after filtering (0 to Nyquist).
+          </p>
+          <div class="canvas-grid">
+            <div class="canvas-block">
+              <h3>Original spectrum</h3>
+              <canvas id="freqOriginal" width="600" height="160"></canvas>
+            </div>
+            <div class="canvas-block">
+              <h3>Filtered spectrum</h3>
+              <canvas id="freqFiltered" width="600" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-card">
+          <h2>What this page is really showing</h2>
+          <p>
+            Any signal can be decomposed into a sum of frequency components.
+            A digital filter simply controls which frequencies are allowed to pass
+            and which are suppressed. Here, you build a simple intuition for
+            low-pass, high-pass, and band-pass behaviour by directly seeing how
+            the spectrum is shaped and how that changes the time-domain signal.
+          </p>
+       
+        </div>
+      </section>
+    </section>
+  </main>
+<section class="text-card">
+  <h2>Digital Signal Filtering and Fourier Analysis</h2>
+  <p class="hint">
+    Conceptual and mathematical overview for the Fourier filter visualizer.
+  </p>
+
+  <h3>1. Introduction</h3>
+  <p>
+    A digital signal is a sequence of values that changes over time. In the time domain,
+    we see the signal&rsquo;s shape, but not the underlying structure that creates it.
+    Many signals that appear complex are, in reality, mixtures of simpler oscillations
+    at different frequencies.
+  </p>
+  <p>
+    Fourier analysis reveals this hidden structure. It expresses a signal as a weighted
+    sum of sinusoids, making it possible to modify the signal by selectively keeping or
+    removing certain frequency components. This is the core idea behind digital filtering.
+  </p>
+  <p>
+    This visualizer and note give both an intuitive and mathematical explanation of how
+    the Fourier transform, frequency masks, and reconstruction interact to shape signals.
+  </p>
+
+  <h3>2. Sampling and the Discrete Domain</h3>
+  <p>
+    When a continuous-time signal \(x(t)\) is sampled at intervals
+    \(T_s = \frac{1}{f_s}\), we obtain a discrete sequence:
+  </p>
+  <p class="equation">
+    \[
+      x[n] = x(nT_s).
+    \]
+  </p>
+  <p>
+    A key consequence of sampling theory is the Nyquist frequency:
+  </p>
+  <p class="equation">
+    \[
+      f_{\text{Nyquist}} = \frac{f_s}{2}.
+    \]
+  </p>
+  <p>
+    This is the highest frequency that can be uniquely represented. Frequencies above
+    it fold back through aliasing, which is why the discrete frequency spectrum runs
+    from \(0\) to \(f_{\text{Nyquist}}\).
+  </p>
+  <p>
+    The number of samples \(N\) also sets the frequency resolution:
+  </p>
+  <p class="equation">
+    \[
+      \Delta f = \frac{f_s}{N}.
+    \]
+  </p>
+  <p>
+    More samples provide sharper frequency detail in the spectrum.
+  </p>
+
+  <h3>3. Signals as Mixtures of Frequencies</h3>
+  <p>
+    Fourier analysis states that any sampled signal can be viewed as a superposition
+    of sinusoids. The Discrete Fourier Transform (DFT) quantifies how much of each
+    frequency is present:
+  </p>
+  <p class="equation">
+    \[
+      X[k] = \sum_{n=0}^{N-1} x[n] e^{-j2\pi kn/N}, \qquad k = 0,1,\dots,N-1.
+    \]
+  </p>
+  <p>
+    The magnitude \(|X[k]|\) represents the strength of frequency component
+    \(f_k = \frac{k}{N} f_s\). In the visualizer, the frequency-domain plots show
+    these magnitudes for the original and filtered signals.
+  </p>
+  <p>
+    Intuitively, a smooth signal contains mostly low frequencies. A signal with sharp
+    edges contains significant high-frequency content, because rapid oscillations are
+    required to form abrupt transitions. Noise tends to spread energy across many
+    frequencies.
+  </p>
+
+  <h3>4. Windowing and Spectral Leakage</h3>
+  <p>
+    Because the DFT observes only a finite-time window of the signal, it implicitly
+    multiplies the true underlying signal by a rectangular window:
+  </p>
+  <p class="equation">
+    \[
+      w[n] =
+      \begin{cases}
+        1, & 0 \le n < N, \\
+        0, & \text{otherwise}.
+      \end{cases}
+    \]
+  </p>
+  <p>
+    In practice, the DFT computes
+  </p>
+  <p class="equation">
+    \[
+      X[k] = \sum_{n=0}^{N-1} x[n] w[n] e^{-j2\pi kn/N}.
+    \]
+  </p>
+  <p>
+    The sharp boundaries of this window introduce \emph{spectral leakage}, which slightly
+    blurs energy into neighbouring frequency bins. This behaviour is normal and appears
+    in nearly all practical Fourier analyses, including the spectra shown in the tool.
+  </p>
+
+  <h3>5. Digital Filters as Frequency Masks</h3>
+  <p>
+    Filtering in the frequency domain is conceptually simple. We define a mask \(H[k]\)
+    that specifies which frequencies to keep:
+  </p>
+  <p class="equation">
+    \[
+      Y[k] = H[k]\,X[k].
+    \]
+  </p>
+  <p>
+    Low-pass, high-pass, and band-pass filters can all be modelled by simple choices
+    of \(H[k]\).
+  </p>
+  <p class="equation">
+    \[
+      H_{\text{LP}}[k] =
+      \begin{cases}
+        1, & f_k \le f_c,\\
+        0, & f_k > f_c,
+      \end{cases}
+    \qquad
+      H_{\text{HP}}[k] =
+      \begin{cases}
+        0, & f_k < f_c,\\
+        1, & f_k \ge f_c,
+      \end{cases}
+    \]
+  </p>
+  <p class="equation">
+    \[
+      H_{\text{BP}}[k] =
+      \begin{cases}
+        1, & f_\ell \le f_k \le f_h,\\
+        0, & \text{otherwise}.
+      \end{cases}
+    \]
+  </p>
+  <p>
+    Each mask removes or preserves specific ``ingredients'' in the signal. In the
+    visualizer, adjusting cutoffs changes \(H[k]\), which immediately reshapes the
+    filtered spectrum and, as a result, the time-domain waveform.
+  </p>
+
+  <h3>6. Reconstructing the Filtered Signal</h3>
+  <p>
+    Once the filtered spectrum \(Y[k]\) is obtained, the signal is reconstructed using
+    the inverse DFT:
+  </p>
+  <p class="equation">
+    \[
+      y[n] = \frac{1}{N} \sum_{k=0}^{N-1} Y[k] e^{j2\pi kn/N}.
+    \]
+  </p>
+  <p>
+    The resulting time-domain waveform depends entirely on which frequency components
+    were retained. Removing high frequencies smooths the signal and rounds off edges;
+    removing low frequencies isolates rapid oscillations and emphasises fine detail.
+  </p>
+
+  <h3>7. Ideal vs Real Filters</h3>
+  <p>
+    The masks used here represent \emph{ideal} filters: they instantly remove all
+    unwanted frequencies. Such filters, however, correspond to impulse responses with
+    infinite extent in time. For example, the ideal low-pass filter leads to a sinc-like
+    response:
+  </p>
+  <p class="equation">
+    \[
+      h[n] \propto \frac{\sin(\omega_c (n-n_0))}{\pi (n-n_0)}.
+    \]
+  </p>
+  <p>
+    Real filters approximate this behaviour using finite, causal responses and specific
+    design trade-offs. Ideal filters are still extremely useful for building intuition,
+    which is what this visualizer focuses on.
+  </p>
+
+  <h3>8. Applications Across Engineering</h3>
+  <p>
+    Frequency-domain filtering is central to many areas of electrical engineering,
+    including:
+  </p>
+  <ul>
+    <li>communications and modulation systems,</li>
+    <li>antenna and RF engineering,</li>
+    <li>audio, image, and video processing,</li>
+    <li>biomedical signal analysis (ECG, EEG, etc.),</li>
+    <li>control systems and embedded signal chains.</li>
+  </ul>
+  <p>
+    The visualizer illustrates how manipulating a signal&apos;s spectral content alters
+    its behaviour, highlighting the connection between time-domain structure and
+    frequency-domain composition.
+  </p>
+
+  <h3>9. Conclusion</h3>
+  <p>
+    The Fourier filter visualizer demonstrates a core idea in engineering: complex
+    systems become clearer when viewed through multiple representations. By decomposing
+    signals into frequency components, applying masks, and reconstructing the resulting
+    waveforms, we gain intuition for how filters shape information. These concepts form
+    part of the backbone of digital signal processing, communications, and many other
+    areas of modern electrical engineering.
+  </p>
+</section>
+
+<footer class="footer-signature">
+    <p>© 2025 — Yousef Fayad</p>
+</footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
