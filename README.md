@@ -61,6 +61,15 @@ Together, these tools illustrate how engineers use mathematics to reveal structu
 
 ---
 
+## Technologies Used
+- **JavaScript (Canvas)** – signal plotting + DFT + reconstruction  
+- **MathJax** – rendering equations  
+- **HTML / CSS** – interface and layout  
+
+---
+
+## © 2025 — Yousef Fayad
+
 ##  Live Demo  
 **Open the visualizer here:**  
 https://sef1002.github.io/fs/
